@@ -14,7 +14,7 @@ This repository describes a private cloud-to-local execution bridge pattern. The
 
 ## Required Guardrails
 
-- Do not upload `~/.codex/auth.json` to any cloud server.
+- Do not upload local auth files or secrets to any cloud server, including `~/.codex/auth.json`, API keys, SSH keys, browser cookies, cloud credentials, `.env` files, or token caches.
 - Do not let the web page pass arbitrary shell commands to the local bridge.
 - Do not expose the local bridge directly to the public internet.
 - Do not run with full user-directory access by default.
@@ -29,7 +29,7 @@ Before building a proof of concept, confirm these items:
 - The local bridge connects outbound to the relay.
 - The local bridge has its own shared secret, token, or signature key.
 - Each task has a unique ID, timestamp, and replay protection.
-- The local bridge only accepts allowlisted workspaces.
+- The local bridge only accepts workspaces from an explicit allowlist.
 - The local bridge enforces a timeout and output-size limit.
 - Logs are redacted before being uploaded.
 - High-risk commands require manual approval.

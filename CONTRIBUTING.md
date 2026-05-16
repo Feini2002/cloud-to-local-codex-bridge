@@ -29,7 +29,7 @@ When opening an issue, include:
 - The section you are commenting on.
 - What is unclear or risky.
 - Your suggested wording or design change.
-- Whether your feedback is from a beginner, developer, security, or architecture perspective.
+- Whether your feedback is about clarity, implementation, security, architecture, or project scope.
 
 ## Project Direction
 
