@@ -7,6 +7,16 @@
 云端发任务，本地 Codex 执行，结果回写云端。  
 Route tasks from a private cloud UI to a local Codex CLI runner, then send logs and results back to the cloud.
 
+## 初衷 / Motivation
+
+这个文档最初来自一个很现实的想法：在个人、私有、安全且合规的边界内，能否把一些原本需要 API key 调用、会产生额外 token/API 花费的自动化分析任务，改由本地 Codex CLI 执行，从而减少重复成本。
+
+更长远的愿望是：对于只服务个人、只访问自己有权限的数据、只在受控本地环境里执行的任务，能否用一个 Codex 订阅承载更多原本依赖 API 的个人自动化工作流。但这个仓库不把这种愿望包装成绕过计费、账号共享或公开代理方案；它关注的是边界清晰的私有自托管架构，以及哪些场景适合用本地 Codex，哪些场景仍应使用官方 API、企业认证或 Codex access token。
+
+This document started from a practical question: within personal, private, secure, and compliant boundaries, can some automation tasks that would normally require API-key calls and extra token/API spend be routed through a local Codex CLI runner instead?
+
+The longer-term hope is to understand whether a single Codex subscription can support more personal automation workflows that only use data the user is authorized to access and only execute inside a controlled local environment. This repository does not present that as a way to bypass billing, share accounts, or build a public proxy. It focuses on a private self-hosted architecture with clear boundaries, and on deciding which workloads fit local Codex execution versus official APIs, enterprise authentication, or Codex access tokens.
+
 展开对应语言即可在当前页面阅读说明。
 
 <details open>
