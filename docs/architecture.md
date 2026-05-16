@@ -5,6 +5,28 @@
 **English:** Remote Web UI to Local Codex CLI Execution Bridge via Reverse Tunnel  
 **中文技术名：** 基于反向隧道的本地 Codex CLI 执行桥：从云端页面到本地执行再回写云端
 
+<details>
+<summary><strong>English Summary</strong></summary>
+
+This document describes a private cloud-to-local Codex execution bridge pattern.
+
+The cloud side acts as the control plane: it handles identity, task creation, state tracking, logs, and result display. The local side acts as the execution plane: a local bridge receives tasks, validates policy, runs Codex in an allowlisted workspace, and sends results back to the cloud.
+
+The key boundary is:
+
+```text
+The cloud can request work.
+The local bridge decides what is allowed to execute.
+```
+
+This architecture is suitable for private, single-user, self-hosted systems. It is not intended as a public API proxy, an account-sharing mechanism, or a way to bypass usage limits, billing systems, rate limits, or safety mechanisms.
+
+Implementation can be platform-agnostic. Cloudflare is one possible stack, but the same responsibilities can be mapped to Vercel, Supabase, AWS, GCP, Azure, a VPS, or a custom backend.
+
+For a first proof of concept, the safest minimal flow is signed polling plus `codex exec`: the cloud creates a task, the local bridge validates it, Codex runs locally in a constrained workspace, and logs/results are returned to the cloud. Even a private prototype should include task IDs, nonce/expiry checks, workspace allowlists, sandboxing, timeouts, output limits, log redaction, and audit trails.
+
+</details>
+
 这套架构的核心不是让云端页面直接运行 Codex，而是把云端页面作为控制面，把用户自己的本地机器作为执行面，再用反向隧道或安全中转通道把两者连接起来。用户在云端页面输入任务，云端负责鉴权、排队、状态记录和结果展示；本地 bridge 收到任务后调用本机 Codex CLI 或 `codex app-server` 执行，再把日志、状态、结构化输出和产物回写到云端数据库。
 
 ## 架构摘要

@@ -187,7 +187,7 @@ Cloudflare 是一种实现选项，不是要求。同一组职责也可以映射
 
 ```text
 README.md              # 同页中英文说明
-docs/architecture.md   # 完整架构说明，目前为中文长文
+docs/architecture.md   # 完整架构说明，中文长文，含英文摘要
 SECURITY.md            # 威胁模型和安全检查清单
 DISCLAIMER.md          # 使用边界和免责声明
 CONTRIBUTING.md        # 贡献说明
@@ -382,7 +382,7 @@ Primary output:
 
 ```text
 README.md              # Same-page Chinese and English README
-docs/architecture.md   # Full architecture note, currently in Chinese
+docs/architecture.md   # Full architecture note, Chinese body with English summary
 SECURITY.md            # Threat model and security checklist
 DISCLAIMER.md          # Scope and usage disclaimer
 CONTRIBUTING.md        # Contribution guidelines
