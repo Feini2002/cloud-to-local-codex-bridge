@@ -21,6 +21,21 @@ This repository describes a private cloud-to-local execution bridge pattern. The
 - Do not share a personal Codex login session with other users.
 - Do not store secrets in task logs or artifacts.
 
+## Pre-Implementation Checklist
+
+Before building a proof of concept, confirm these items:
+
+- The cloud page is protected by a real identity layer.
+- The local bridge connects outbound to the relay.
+- The local bridge has its own shared secret, token, or signature key.
+- Each task has a unique ID, timestamp, and replay protection.
+- The local bridge only accepts allowlisted workspaces.
+- The local bridge enforces a timeout and output-size limit.
+- Logs are redacted before being uploaded.
+- High-risk commands require manual approval.
+- The system can cancel a running task.
+- The system records an audit trail for every task.
+
 ## High-Risk Actions
 
 The following actions should require manual approval:
@@ -44,6 +59,18 @@ The following actions should require manual approval:
 | Log leakage | Secrets uploaded in logs | Cloud database exposure | Redaction, storage permissions, retention policy |
 | Resource exhaustion | Long-running tasks or unlimited output | Local machine slowdown | Timeouts, output caps, concurrency limits |
 | Account boundary confusion | Multiple users share one personal login | Compliance and account risk | Single-user model; use API keys or enterprise auth for teams |
+
+## Recommended Defaults
+
+For an early private prototype:
+
+- Use one local workspace.
+- Use one local bridge instance.
+- Use `workspace-write` sandbox.
+- Use signed polling before adding WebSocket complexity.
+- Store only logs and final output at first.
+- Avoid automatic file deletion, deployment, publishing, or production actions.
+- Keep the bridge config local rather than making the cloud API the only source of policy.
 
 ## Reporting
 
