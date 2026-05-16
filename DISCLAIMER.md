@@ -17,6 +17,8 @@
 
 团队、商业产品、公开用户或高频自动化场景，应优先使用官方 API key、企业认证、Codex access token，或其他官方支持的自动化方式。
 
+模型选择和推理强度也属于本地执行策略。即使技术上可以让云端任务请求 `gpt-5.5`、`xhigh` 这类强模型配置，也应该由本地桥接器根据任务类型、额度预算、安全策略和当前官方规则来决定是否允许。
+
 基于这个模式构建或运行生产系统前，请自行审阅当前 OpenAI 条款、Codex 文档、账号共享政策，以及所在组织的数据安全要求。
 
 </details>
@@ -37,6 +39,8 @@ This project is not intended to:
 - Encourage exposing a local execution bridge to untrusted users.
 
 For team, commercial, public, or high-volume automation scenarios, use official API keys, enterprise authentication, Codex access tokens, or other officially supported automation flows.
+
+Model choice and reasoning level are also part of local execution policy. Even if the cloud task can technically request stronger settings such as `gpt-5.5` with `xhigh` reasoning, the local bridge should decide whether to allow that based on task type, quota budget, security policy, and current official rules.
 
 Always review the current OpenAI terms, Codex documentation, account-sharing guidance, and your organization’s data security requirements before building or operating a production system based on this pattern.
 

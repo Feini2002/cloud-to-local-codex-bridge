@@ -71,6 +71,26 @@ The longer-term hope is to understand whether a single Codex subscription can su
 - 云端控制面不直接进入本地机器。
 - 本地桥接器主动连出、校验任务、在受控工作区中运行 Codex，并回传日志和结果。
 
+## 模型与推理强度
+
+这套方案真正有吸引力的地方，不只是“能从云端触发本地执行”，还包括可以在本地 Codex CLI 里选择合适的模型和推理强度。很多人付费使用 Codex，看中的正是更强模型在复杂代码、长上下文分析、架构判断和自动修复上的能力。
+
+桥接器可以把任务分成不同档位：
+
+- 普通摘要、格式整理、轻量文档：使用较快、较省的模型或较低推理强度。
+- 代码审查、复杂排错、跨文件改造：使用更强模型和更高推理强度。
+- 关键架构分析、长期任务规划、疑难修复：可以显式指定 `gpt-5.5` 这类强模型，并使用 `xhigh` 推理强度。
+
+一次性任务可以类似这样调用：
+
+```bash
+codex exec --json --model gpt-5.5 -c model_reasoning_effort="xhigh" --sandbox workspace-write "分析这个仓库的架构风险，并给出修复建议"
+```
+
+也可以在本地 `~/.codex/config.toml` 里设置默认模型，再让云端任务只传入“任务类型”，由本地桥接器决定最终使用哪个模型和推理强度。更推荐这种方式，因为模型选择属于本地执行策略，不应该完全交给云端页面随意控制。
+
+模型名称、可用档位和额度规则会随 Codex 产品变化。真正落地时，应以当前 `codex --help`、`codex exec --help`、`codex debug models` 和官方文档为准。
+
 ## 架构概览
 
 从上往下读这张图：任务从浏览器开始，经过云端控制面，被本地桥接器领取，在本地工作区中运行，然后回到云端结果页。
@@ -265,6 +285,26 @@ Key points:
 - The browser does not run Codex.
 - The cloud control plane does not directly enter the local machine.
 - The local bridge connects outward, validates the task, runs Codex in a controlled workspace, and returns logs/results.
+
+## Model And Reasoning Level
+
+The value of this pattern is not only that a cloud page can trigger local execution. It also lets the local Codex CLI choose the right model and reasoning level for the task. For many paid Codex users, the point is access to stronger models for complex coding, long-context analysis, architecture work, and automated repair.
+
+The bridge can route tasks into different execution tiers:
+
+- Lightweight summaries, formatting, and small documentation tasks can use a faster model or lower reasoning level.
+- Code review, debugging, and multi-file changes can use a stronger model and higher reasoning level.
+- Architecture analysis, long-horizon planning, and difficult fixes can explicitly use a strong model such as `gpt-5.5` with `xhigh` reasoning.
+
+A one-shot task can look like this:
+
+```bash
+codex exec --json --model gpt-5.5 -c model_reasoning_effort="xhigh" --sandbox workspace-write "Analyze this repository for architecture risks and propose fixes"
+```
+
+Another option is to set default models in the local `~/.codex/config.toml`, then let the cloud task send only a task type. The local bridge decides which model and reasoning level to use. This is usually safer, because model selection is part of local execution policy and should not be fully controlled by the cloud page.
+
+Model names, available reasoning levels, and quota behavior can change as Codex evolves. Use the current `codex --help`, `codex exec --help`, `codex debug models`, and official documentation when implementing this.
 
 ## Architecture Overview
 

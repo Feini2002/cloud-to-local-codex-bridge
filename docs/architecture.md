@@ -25,6 +25,8 @@ Implementation can be platform-agnostic. Cloudflare is one possible stack, but t
 
 For a first proof of concept, the safest minimal flow is signed polling plus `codex exec`: the cloud creates a task, the local bridge validates it, Codex runs locally in a constrained workspace, and logs/results are returned to the cloud. Even a private prototype should include task IDs, nonce/expiry checks, workspace allowlists, sandboxing, timeouts, output limits, log redaction, and audit trails.
 
+Model choice is part of the local execution policy. The bridge may route simple tasks to faster settings and reserve stronger models, such as `gpt-5.5` with `xhigh` reasoning, for complex code review, architecture analysis, and difficult repairs. The cloud should submit intent and task type; the local bridge should decide the actual model, reasoning level, sandbox, and approval policy.
+
 </details>
 
 这套架构的核心不是让云端页面直接运行 Codex，而是把云端页面作为控制面，把用户自己的本地机器作为执行面，再用反向隧道或安全中转通道把两者连接起来。用户在云端页面输入任务，云端负责鉴权、排队、状态记录和结果展示；本地 bridge 收到任务后调用本机 Codex CLI 或 `codex app-server` 执行，再把日志、状态、结构化输出和产物回写到云端数据库。
@@ -86,6 +88,46 @@ For a first proof of concept, the safest minimal flow is signed polling plus `co
 - OpenAI 云端服务：模型推理与 Codex 背后的能力提供方，不等同于本地 `codex app-server`。
 
 Serverless 函数、边缘函数或静态网页不承担本地 CLI 执行职责。真正运行 `codex` 的环境必须是本地电脑、VPS、私有服务器、CI runner 或容器。
+
+## 模型选择与任务分流
+
+既然执行最终落在本地 Codex CLI，那么模型选择就是这套架构的核心体验之一。很多人付费使用 Codex，看中的不是“能不能跑一个命令”，而是强模型在复杂代码、长上下文、跨文件分析和自动修复里的能力。因此，本地 bridge 不应该只负责“把提示词转发给 Codex”，还应该负责判断任务该用什么模型、什么推理强度、什么沙箱策略。
+
+一种实用分层：
+
+| 任务类型 | 推荐策略 | 说明 |
+| --- | --- | --- |
+| 摘要、格式整理、简单报告 | 较快模型 / 低到中等推理强度 | 追求速度和成本控制 |
+| 代码审查、Bug 定位、文档生成 | 强模型 / 中到高推理强度 | 需要更稳的上下文理解 |
+| 架构分析、复杂修复、跨模块重构 | `gpt-5.5` 等强模型 / `high` 或 `xhigh` | 适合真正吃模型能力的任务 |
+
+一次性执行示例：
+
+```bash
+codex exec --json --model gpt-5.5 -c model_reasoning_effort="xhigh" --sandbox workspace-write "分析这个仓库的架构风险，并给出修复建议"
+```
+
+更稳的工程方式，是把模型策略留在本地配置和本地 bridge 中：
+
+```toml
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+```
+
+云端任务只传递“任务意图”和“任务等级”，例如 `summary`、`review`、`refactor`、`architecture_audit`。本地 bridge 根据自己的策略表决定最终调用：
+
+```text
+summary            -> 快速模型 + medium
+review             -> gpt-5.5 + high
+architecture_audit -> gpt-5.5 + xhigh
+```
+
+这个设计有两个好处：
+
+- 云端页面不会变成任意消耗额度的开关。
+- 模型、推理强度、沙箱和审批策略都留在本地，由真正拥有 Codex 登录态和本地机器权限的人控制。
+
+模型名称、推理档位和额度规则会随 Codex 产品变化。实现时应以当前 `codex --help`、`codex exec --help`、`codex debug models` 和官方文档为准，而不是把某个版本的参数永久写死在云端。
 
 ## 架构图
 
@@ -223,6 +265,12 @@ flowchart TD
 
 ```bash
 codex exec --json --sandbox workspace-write "任务内容"
+```
+
+需要指定模型和推理强度时，可以在本地桥接器生成命令时加入：
+
+```bash
+codex exec --json --model gpt-5.5 -c model_reasoning_effort="xhigh" --sandbox workspace-write "任务内容"
 ```
 
 适配任务：
