@@ -14,68 +14,68 @@ Route tasks from a private cloud UI to a local Codex CLI runner, then send logs 
 
 ## 这是什么
 
-**Cloud-to-Local Codex Bridge** 是一份 concept / architecture note，用来描述如何把私有云端页面里的任务安全地交给本地 Codex CLI runner 执行。
+**Cloud-to-Local Codex Bridge** 是一份概念与架构说明，用来描述如何把私有云端页面里的任务，安全地交给本地 Codex CLI 执行。
 
 它描述的是一种私有、自托管的执行模式：
 
 ```text
-Web UI
-  -> Cloud Control Plane
-  -> Task / Relay Layer
-  -> Local Bridge
-  -> Local Codex Runtime
-  -> Result Store
-  -> Web UI
+云端页面
+  -> 云端控制面
+  -> 任务 / 中转层
+  -> 本地桥接器
+  -> 本地 Codex 运行环境
+  -> 结果存储
+  -> 云端页面
 ```
 
-云端侧是 control plane：负责身份、任务创建、状态、日志和结果展示。本地侧是 execution plane：本地 bridge 接收任务、校验策略、在允许列表 workspace 里启动 Codex，并把结果回传云端。
+云端侧是控制面：负责身份、任务创建、状态、日志和结果展示。本地侧是执行面：本地桥接器接收任务、校验策略、在允许列表工作区里启动 Codex，并把结果回传云端。
 
-核心原则：**云端可以请求执行任务，但本地 bridge 必须决定什么任务允许执行。**
+核心原则：**云端可以请求执行任务，但本地桥接器必须决定什么任务允许执行。**
 
 ## 这不是什么
 
-- 不是 public API proxy。
-- 不是 account sharing 方案。
-- 不是绕过 usage limits、billing systems、rate limits 或 safety mechanisms 的方法。
-- 不是 OpenAI 官方项目，也不是 OpenAI policy interpretation。
+- 不是公开 API 代理。
+- 不是账号共享方案。
+- 不是绕过使用限制、计费系统、速率限制或安全机制的方法。
+- 不是 OpenAI 官方项目，也不是 OpenAI 政策解释。
 
-它描述的是单用户、私有、自托管的 runner pattern：用户远程控制自己的本地机器。
+它描述的是单用户、私有、自托管的执行器模式：用户远程控制自己的本地机器。
 
 ## 30 秒理解
 
-常见云端 AI app 大致是：
+常见云端 AI 应用大致是：
 
 ```text
-browser -> cloud API -> model service -> browser
+浏览器 -> 云端 API -> 模型服务 -> 浏览器
 ```
 
 这个模式是：
 
 ```text
-browser -> cloud control plane -> local bridge -> local Codex process -> cloud result view
+浏览器 -> 云端控制面 -> 本地桥接器 -> 本地 Codex 进程 -> 云端结果页
 ```
 
 关键点：
 
-- Browser 不运行 Codex。
-- Cloud control plane 不直接进入本地机器。
-- Local bridge 主动连出、校验任务、在受控 workspace 中运行 Codex，并回传 logs/results。
+- 浏览器不运行 Codex。
+- 云端控制面不直接进入本地机器。
+- 本地桥接器主动连出、校验任务、在受控工作区中运行 Codex，并回传日志和结果。
 
-## Architecture Overview
+## 架构概览
 
-从上往下读这张图：任务从 browser 开始，经过 cloud control plane，被 local bridge 领取，在本地 workspace 中运行，然后回到云端结果页。
+从上往下读这张图：任务从浏览器开始，经过云端控制面，被本地桥接器领取，在本地工作区中运行，然后回到云端结果页。
 
 ```mermaid
 flowchart TD
-  Browser["Browser / Web UI"] --> Access["Identity Provider / Access Gateway"]
-  Access --> API["Cloud Control Plane"]
-  API --> Queue["Task / Relay Layer"]
-  API --> Store["Result Store"]
-  Queue <--> Bridge["Local Bridge"]
-  Bridge --> Policy["Workspace Policy"]
-  Policy --> Sandbox["Sandbox"]
-  Sandbox --> Codex["Codex Process"]
-  Codex --> Collector["Event & Artifact Collector"]
+  Browser["浏览器 / 云端页面"] --> Access["身份提供方 / 访问网关"]
+  Access --> API["云端控制面"]
+  API --> Queue["任务 / 中转层"]
+  API --> Store["结果存储"]
+  Queue <--> Bridge["本地桥接器"]
+  Bridge --> Policy["工作区策略"]
+  Policy --> Sandbox["沙箱"]
+  Sandbox --> Codex["Codex 进程"]
+  Codex --> Collector["事件与产物收集器"]
   Collector --> Bridge
   Bridge --> Queue
   Queue --> API
@@ -83,122 +83,122 @@ flowchart TD
   Store --> Browser
 ```
 
-## Scope And Boundaries
+## 范围与边界
 
 适合：
 
 - 个人私有系统。
-- 单用户控制自己的本地开发 workspace。
-- 云端 UI 启动本地 Codex 任务，同时不暴露本地公网端口。
-- 部署在 Cloudflare、Vercel、Supabase、AWS、GCP、Azure、VPS 或自建 backend 上。
-- 执行受 workspace policy、sandbox、approval、timeout、output limits 和 audit logs 约束。
+- 单用户控制自己的本地开发工作区。
+- 云端页面启动本地 Codex 任务，同时不暴露本地公网端口。
+- 部署在 Cloudflare、Vercel、Supabase、AWS、GCP、Azure、VPS 或自建后端上。
+- 执行受工作区策略、沙箱、审批、超时、输出限制和审计日志约束。
 
 不适合：
 
 - 公开多用户访问。
 - 多人共享一个个人 Codex 或 ChatGPT 登录态。
-- 把个人订阅包装成 public API。
-- 从网页向本地机器透传任意 shell commands。
-- 让 Codex 默认访问整个用户目录、SSH keys、browser cookies、cloud credentials、`.env` files 或 token caches。
+- 把个人订阅包装成公开 API。
+- 从网页向本地机器透传任意 shell 命令。
+- 让 Codex 默认访问整个用户目录、SSH key、浏览器 cookie、云服务凭据、`.env` 文件或 token 缓存。
 
-## Platform-Agnostic Mapping
+## 平台无关映射
 
 Cloudflare 是一种实现选项，不是要求。同一组职责也可以映射到其他平台。
 
-| Responsibility | Generic Component | Example Implementations |
+| 职责 | 通用组件 | 可选实现 |
 | --- | --- | --- |
-| Identity | IdP / access gateway | Cloudflare Access, Auth0, Clerk, Supabase Auth, GitHub OAuth |
-| Web UI | Frontend hosting | Cloudflare Pages, Vercel, Netlify, static hosting |
-| Control plane | API / backend | Cloudflare Worker, Next.js API routes, FastAPI, Express, Lambda, Cloud Run |
-| Task coordination | Queue / state store | Durable Objects, Redis, Postgres, SQS, Pub/Sub, RabbitMQ |
-| Relay / transport | Polling, WebSocket, SSE, tunnel, mesh network | WebSocket server, Tailscale, SSH reverse tunnel, VPS relay |
-| Result storage | Database / object storage | Postgres, SQLite, Supabase, D1, S3, R2, MinIO |
+| 身份校验 | 身份提供方 / 访问网关 | Cloudflare Access, Auth0, Clerk, Supabase Auth, GitHub OAuth |
+| 云端页面 | 前端托管 | Cloudflare Pages, Vercel, Netlify, 静态站点托管 |
+| 控制面 | API / 后端 | Cloudflare Worker, Next.js API routes, FastAPI, Express, Lambda, Cloud Run |
+| 任务协调 | 队列 / 状态存储 | Durable Objects, Redis, Postgres, SQS, Pub/Sub, RabbitMQ |
+| 中转 / 传输 | 轮询、WebSocket、SSE、隧道、网状私有网络 | WebSocket 服务, Tailscale, SSH 反向隧道, VPS 中转服务 |
+| 结果存储 | 数据库 / 对象存储 | Postgres, SQLite, Supabase, D1, S3, R2, MinIO |
 
-## Minimal Viable Flow
+## 最小可行流程
 
-第一版不需要完整的 interactive runtime。最小版本可以用 signed polling 和 `codex exec`：
+第一版不需要完整的交互式运行环境。最小版本可以用签名轮询和 `codex exec`：
 
 ```text
-1. Cloud UI creates a task
-2. Cloud API stores the task as pending
-3. Local bridge polls for pending work
-4. Local bridge verifies signature, expiry, nonce, workspace, and risk policy
-5. Local bridge runs codex exec in an allowlisted workspace
-6. Local bridge redacts/truncates logs and uploads events
-7. Cloud UI displays completed or failed status
+1. 云端页面创建任务
+2. 云端 API 将任务保存为 pending 状态
+3. 本地桥接器轮询待处理任务
+4. 本地桥接器校验签名、过期时间、nonce、工作区和风险策略
+5. 本地桥接器在允许列表工作区中运行 `codex exec`
+6. 本地桥接器脱敏 / 截断日志，并上传事件
+7. 云端页面展示 completed 或 failed 状态
 ```
 
-即使是私有 PoC，也应该包含：
+即使是私有概念验证（PoC），也应该包含：
 
 - `task_id`, `nonce`, `expires_at`
-- workspace allowlist
-- sandbox enabled by default
-- output-size limit
-- timeout and cancellation
-- log redaction
-- replay protection
-- auditable task state
+- 工作区允许列表
+- 默认开启沙箱
+- 输出大小限制
+- 超时和取消机制
+- 日志脱敏
+- 重放保护
+- 可审计的任务状态
 
-## Roadmap
+## 路线图
 
-**Phase 1: signed polling + `codex exec`**  
-跑通最小安全闭环：创建任务，本地 bridge 领取任务，本地 Codex 执行，结果返回云端。
+**阶段 1：签名轮询 + `codex exec`**  
+跑通最小安全闭环：创建任务，本地桥接器领取任务，本地 Codex 执行，结果返回云端。
 
-**Phase 2: real-time events + cancellable execution**  
-加入 live logs、ordered events、timeout handling、cancellation 和 idempotent result updates。
+**阶段 2：实时事件 + 可取消执行**  
+加入实时日志、有序事件、超时处理、取消机制和幂等结果更新。
 
-**Phase 3: approvals + artifacts + audit**  
-加入高风险操作审批，保存 diff、reports 等 artifacts，做 log redaction，并保留完整 audit trail。
+**阶段 3：审批 + 产物 + 审计**  
+加入高风险操作审批，保存差异补丁（diff）、报告等产物，做日志脱敏，并保留完整审计轨迹。
 
-**Phase 4: session runtime**  
-探索 `codex app-server`、多 workspace policy、更丰富的交互和 long-lived sessions。
+**阶段 4：会话型运行环境**  
+探索 `codex app-server`、多工作区策略、更丰富的交互和长会话。
 
-## Security Boundaries
+## 安全边界
 
-Cloud side 不应该被 local bridge 盲信。云端可以提交 task request，但本地执行必须由本地策略治理。
+云端侧不应该被本地桥接器盲信。云端可以提交任务请求，但本地执行必须由本地策略治理。
 
-必要 guardrails：
+必要防护：
 
-- 不上传本地 auth files，例如 `~/.codex/auth.json`、API keys、SSH keys、browser cookies、cloud credentials、`.env` files 或 token caches。
-- 不把 local bridge 直接暴露到公网。
-- 不允许网页透传任意 shell command。
-- 默认不使用 full user-directory access。
-- 不多人共享个人 Codex login session。
-- 本地策略必须留在本地：workspace allowlists、risk rules、approval decisions 都必须由 bridge 强制执行。
-- 只保存必要任务数据，敏感 logs 上传前先 redaction。
+- 不上传本地认证文件，例如 `~/.codex/auth.json`、API key、SSH key、浏览器 cookie、云服务凭据、`.env` 文件或 token 缓存。
+- 不把本地桥接器直接暴露到公网。
+- 不允许网页透传任意 shell 命令。
+- 默认不使用完整用户目录访问权限。
+- 不多人共享个人 Codex 登录态。
+- 本地策略必须留在本地：工作区允许列表、风险规则、审批决策都必须由桥接器强制执行。
+- 只保存必要任务数据，敏感日志上传前先脱敏。
 
 完整威胁模型见 [SECURITY.md](SECURITY.md)。
 
-## Repository Status
+## 仓库状态
 
-Status: **concept / architecture note**
+状态：**概念 / 架构说明**
 
-Runnable code: **not yet**
+可运行代码：**暂未提供**
 
-Primary output:
+主要内容：
 
-- architecture overview
-- security boundaries
-- platform mapping
-- MVP roadmap
-- implementation notes
+- 架构概览
+- 安全边界
+- 平台映射
+- MVP 路线图
+- 实现说明
 
-## Repository Structure
+## 仓库结构
 
 ```text
 README.md              # 同页中英文说明
 docs/architecture.md   # 完整架构说明，目前为中文长文
-SECURITY.md            # Threat model and security checklist
-DISCLAIMER.md          # Scope and usage disclaimer
-CONTRIBUTING.md        # Contribution guidelines
+SECURITY.md            # 威胁模型和安全检查清单
+DISCLAIMER.md          # 使用边界和免责声明
+CONTRIBUTING.md        # 贡献说明
 .gitignore
 ```
 
-## How To Read
+## 阅读方式
 
 - 快速理解：读当前 README。
 - 完整长文：读 [docs/architecture.md](docs/architecture.md)。
-- 做 PoC 之前：读 [SECURITY.md](SECURITY.md)。
+- 做概念验证（PoC）之前：读 [SECURITY.md](SECURITY.md)。
 - 面向团队、公开用户或商业服务前：读 [DISCLAIMER.md](DISCLAIMER.md)。
 - 提 issue 或改文档前：读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
