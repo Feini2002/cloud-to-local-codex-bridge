@@ -5,7 +5,7 @@ This repository describes a private cloud-to-local execution bridge pattern. The
 ## Intended Security Model
 
 - Single-user private use.
-- Cloud access protected by identity provider authentication, such as Cloudflare Access.
+- Cloud access protected by an identity provider or access gateway, such as Cloudflare Access, Auth0, Clerk, Supabase Auth, GitHub OAuth, or a private self-hosted login.
 - Local bridge connects outbound to the cloud relay; it should not expose a public listening port.
 - Every task has a unique ID, timestamp, signature, and audit trail.
 - Local execution is limited to allowlisted workspaces.
@@ -36,7 +36,7 @@ The following actions should require manual approval:
 
 | Risk | Typical path | Impact | Mitigation |
 | --- | --- | --- | --- |
-| Unauthorized access | Cloud auth bypass or leaked session | Remote local execution | Cloudflare Access, JWT checks, extra bridge token |
+| Unauthorized access | Cloud auth bypass or leaked session | Remote local execution | IdP / access gateway, JWT checks, extra bridge token |
 | Replay attack | Re-submitting old task payload | Repeated dangerous execution | Unique task IDs, timestamps, signatures, nonce |
 | Prompt injection | Task asks Codex to read sensitive files | Secret or privacy leakage | Workspace allowlist, sensitive path denylist, redaction |
 | Arbitrary command execution | Web page passes raw shell commands | Local machine compromise | Command policy, approval flow, sandbox |

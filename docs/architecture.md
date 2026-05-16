@@ -28,6 +28,7 @@
 - 云端页面触发本地 Codex 执行开发、分析、修复、报告生成等任务。
 - 本地机器不暴露公网端口，由本地 bridge 主动连接云端。
 - 任务执行受工作区、命令、审批、超时和审计约束。
+- 云端控制面运行在 Cloudflare、Vercel、Supabase、AWS、GCP、Azure、自建 VPS 等任意平台。
 
 不适用场景：
 
@@ -44,7 +45,7 @@
 ```text
 用户浏览器
   -> 云端网页
-  -> Cloudflare Access / 身份校验
+  -> 身份提供方 / Access Gateway
   -> 云端 API / 任务队列
   -> 安全中转通道
   -> 本地 bridge / local agent
@@ -56,23 +57,23 @@
   -> 云端网页展示结果
 ```
 
-原始表达里的“codex server 执行”需要拆开理解：
+链路里的“codex server 执行”需要拆开理解：
 
 - `codex exec`：本地 CLI 的一次性非交互任务执行方式。
 - `codex app-server`：本地 Codex 服务协议，更适合富客户端和多轮交互。
 - OpenAI 云端服务：模型推理与 Codex 背后的能力提供方，不等同于本地 `codex app-server`。
 
-Cloudflare Worker 或静态网页不承担本地 CLI 执行职责。真正运行 `codex` 的环境必须是本地电脑、VPS、私有服务器、CI runner 或容器。
+Serverless 函数、边缘函数或静态网页不承担本地 CLI 执行职责。真正运行 `codex` 的环境必须是本地电脑、VPS、私有服务器、CI runner 或容器。
 
 ## 架构图
 
 ```mermaid
 flowchart TD
-  Browser["用户浏览器"] --> Access["Cloudflare Access"]
+  Browser["用户浏览器"] --> Access["身份提供方 / Access Gateway"]
   Access --> Web["云端页面"]
   Web --> API["云端 API"]
-  API --> Queue["任务队列 / Durable Object"]
-  API --> DB["D1 / KV / R2 / 数据库"]
+  API --> Queue["任务队列 / 会话协调器"]
+  API --> DB["数据库 / 对象存储"]
   Queue <--> Relay["安全中转通道"]
   Relay <--> Bridge["本地 bridge / local agent"]
   Bridge --> Policy["本地策略校验"]
@@ -106,7 +107,7 @@ flowchart TD
 
 云端 API 是控制中心，负责：
 
-- 校验 Cloudflare Access 身份。
+- 校验身份提供方或访问网关传来的用户身份。
 - 创建任务并分配 `task_id`。
 - 写入任务状态。
 - 向本地 bridge 下发任务。
@@ -115,13 +116,42 @@ flowchart TD
 - 写入审计日志。
 - 对任务、事件、产物做持久化。
 
-Cloudflare 技术栈对应关系：
+## 平台映射
 
-- Cloudflare Access：单 Google 账号登录保护。
+这个架构不绑定 Cloudflare。Cloudflare 是一个很适合个人私有系统的实现选项，但不是唯一实现方式。
+
+| 职责 | 通用组件 | Cloudflare 实现 | 其他实现 |
+| --- | --- | --- | --- |
+| 身份校验 | IdP / Access Gateway | Cloudflare Access | Auth0、Clerk、Supabase Auth、GitHub OAuth、自建登录 |
+| 云端页面 | Web UI | Cloudflare Pages | Vercel、Netlify、自建 Nginx、静态站点托管 |
+| 控制面 API | API / Serverless / Backend | Cloudflare Worker | Next.js API、FastAPI、Express、AWS Lambda、Cloud Run、自建服务 |
+| 任务协调 | Queue / Session Coordinator | Durable Objects、Queues | Redis、Postgres、SQS、Pub/Sub、RabbitMQ、SQLite |
+| 长连接中转 | Relay / WebSocket Server | Durable Objects、Cloudflare Tunnel | Fly.io、Railway、Render、VPS、Tailscale、SSH reverse tunnel |
+| 数据存储 | DB / Object Storage | D1、KV、R2 | Postgres、Supabase、S3、MinIO、SQLite、MySQL |
+
+因此，“Cloudflare 版”只是一个参考落地：
+
+- Cloudflare Access：单账号登录保护。
 - Cloudflare Worker：轻量 API 和鉴权入口。
 - Durable Objects：长连接、任务会话、单用户协调。
 - D1 / KV / R2：任务、日志、结果和附件存储。
 - Queues：异步任务分发。
+
+“Vercel / Supabase 版”也可以成立：
+
+- Vercel：页面和 API route。
+- Supabase Auth：身份校验。
+- Supabase Postgres：任务、日志和状态。
+- Supabase Realtime 或独立 WebSocket relay：本地 bridge 通道。
+- S3 / R2 / Supabase Storage：产物存储。
+
+“自建 VPS 版”也可以成立：
+
+- Nginx / Caddy：HTTPS 和反向代理。
+- Express / FastAPI：控制面 API。
+- Postgres / SQLite：任务数据库。
+- WebSocket server：本地 bridge 中转。
+- systemd：部署云端 relay 和本地 bridge。
 
 ### 安全中转通道
 
@@ -369,12 +399,12 @@ updated_at
 
 | 风险 | 典型方式 | 后果 | 防护 |
 | --- | --- | --- | --- |
-| 未授权访问 | 云端页面被绕过或登录态泄露 | 远程触发本地执行 | Cloudflare Access、JWT 校验、二次高熵 token |
+| 未授权访问 | 云端页面被绕过或登录态泄露 | 远程触发本地执行 | IdP / Access Gateway、JWT 校验、二次高熵 token |
 | 重放攻击 | 旧任务包重复提交 | 重复执行危险操作 | `task_id` 唯一、时间戳、签名、nonce |
 | Prompt 注入 | 任务诱导 Codex 读取敏感文件 | 凭据或隐私泄露 | 工作区白名单、敏感路径黑名单、输出脱敏 |
 | 任意命令执行 | 网页透传 shell 命令 | 本地机器被接管 | 命令策略、审批流、固定 runner、sandbox |
 | 权限过大 | Codex 访问整个用户目录 | 本地文件泄露或误改 | 独立 OS 用户、容器、固定 cwd |
-| 产物泄露 | 日志上传密钥或源码 | 云端数据库泄密 | 日志脱敏、R2 权限隔离、最小保存 |
+| 产物泄露 | 日志上传密钥或源码 | 云端数据库泄密 | 日志脱敏、对象存储权限隔离、最小保存 |
 | 任务失控 | 长时间执行或无限输出 | 本地资源耗尽 | 超时、输出上限、并发限制、取消机制 |
 | 账号边界不清 | 多人共用个人登录态 | 合规和账号风险 | 单人私用、团队场景改用 API Key 或企业授权 |
 
@@ -438,14 +468,14 @@ updated_at
 链路：
 
 ```text
-Cloudflare Access
+身份提供方 / Access Gateway
   -> Web 页面
-  -> Worker API
-  -> D1 创建任务
+  -> 云端 API
+  -> 数据库创建任务
   -> 本地 bridge 轮询任务
   -> codex exec --json
   -> bridge 回传事件
-  -> D1 保存结果
+  -> 数据库保存结果
   -> Web 页面展示
 ```
 
@@ -473,8 +503,8 @@ Cloudflare Access
 
 ```text
 cloud/
-  worker.ts
-  durable-object.ts
+  api.ts
+  session-coordinator.ts
   db.sql
   auth.ts
   tasks.ts
@@ -498,7 +528,8 @@ shared/
 
 模块职责：
 
-- `cloud/worker.ts`：Cloudflare Worker 入口。
+- `cloud/api.ts`：云端 API 入口，可以对应 Worker、API route、Express、FastAPI 或 Lambda。
+- `cloud/session-coordinator.ts`：任务会话协调器，可以对应 Durable Objects、Redis、Postgres 或 WebSocket relay。
 - `cloud/tasks.ts`：任务创建、领取、状态更新。
 - `bridge/agent.ts`：本地 bridge 主进程。
 - `bridge/codex-runner.ts`：封装 `codex exec` 和 `codex app-server`。
@@ -570,11 +601,11 @@ while (true) {
 
 ```text
 Browser
-  -> Cloudflare Access
-  -> Cloudflare Pages / Web UI
-  -> Cloudflare Worker API
-  -> Durable Object task session
-  -> D1 / KV / R2
+  -> Identity Provider / Access Gateway
+  -> Web UI
+  -> Cloud API
+  -> Task session coordinator
+  -> Database / Object Storage
   <- WebSocket / signed polling
 Local Bridge
   -> Validate task
